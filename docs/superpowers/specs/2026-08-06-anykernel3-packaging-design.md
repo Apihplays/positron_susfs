@@ -40,7 +40,6 @@ do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
 device.name1=veux
-device.name2=peux
 supported.versions=13.0 - 16.0
 
 # boot shell variables
@@ -50,14 +49,16 @@ RAMDISK_COMPRESSION=auto;
 PATCH_VBMETA_FLAG=auto;
 
 . tools/ak3-core.sh;
-dump_boot;
-write_boot;
+split_boot;   # kernel-only swap: keeps boot's existing ramdisk + dtb (PixelOS-correct)
+flash_boot;
 ```
 
 - `BLOCK=boot` — kernel lives in `boot` (confirmed).
 - `IS_SLOT_DEVICE=auto` — handles A/B slot suffix (`_a`/`_b`).
-- `device.name1/2=veux,peux` — the veux family codenames.
-- Payload file named **`Image`** (raw kernel, matches `BOARD_KERNEL_IMAGE_NAME=Image`). AnyKernel3 will use it as the boot kernel.
+- `device.name1=veux` — the veux codename.
+- Payload file named **`Image`** (raw kernel, matches `BOARD_KERNEL_IMAGE_NAME=Image`). AnyKernel3 uses it as the boot kernel.
+- **`split_boot`/`flash_boot`** (positron-style) replaces only the kernel inside the existing boot image — the ROM's ramdisk + dtb are preserved. This is correct for PixelOS: the dtb stays matched to the ROM. Explicitly **not** copied from positron: `vendor_boot` flash, `check_vendor_hals` dtb patching, `erase_dtbo`, `ksu.bdf` — those are MIUI/KSU-specific and would conflict with PixelOS.
+- Optional `cmdline` override is stubbed (commented) for future use.
 
 ### 3. `build-anykernel.sh`
 
@@ -89,3 +90,5 @@ write_boot;
 - Fastboot raw `boot.img` (would need magiskboot + stock base — documented in HANDOVER instead).
 - SUSFS (blocked — see HANDOVER).
 - Actual device boot test (needs the user's hardware).
+- **MIUI-specific positron features** — `vendor_boot` flash, `check_vendor_hals` dtb patching, `erase_dtbo`, `ksu.bdf`: rejected. These are tuned for stock-MIUI vendor HALs; our kernel is for PixelOS so shipping them would conflict. Positron's build is also denser (48MB Image vs our 26MB) because it enables more features — out of scope to match.
+- Shipping our own **dtb**: unnecessary for PixelOS — `split_boot` preserves the boot partition's existing dtb (matched to the ROM).
