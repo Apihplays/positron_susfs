@@ -7,7 +7,7 @@ TECHPACK?=y
 # was written for Qualcomm's pinned clang. Downgrade these classes to
 # non-fatal for all techpack subdirs so the tree builds on a modern toolchain.
 subdir-ccflags-y += -Wno-error=format
-subdir-ccflags-y += -Wno-error=maybe-uninitialized
+subdir-ccflags-y += -Wno-error=uninitialized
 subdir-ccflags-y += -Wno-error=implicit-fallthrough
 subdir-ccflags-y += -Wno-error=misleading-indentation
 subdir-ccflags-y += -Wno-error=unused-variable
