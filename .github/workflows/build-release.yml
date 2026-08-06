@@ -1,0 +1,43 @@
+name: build-release
+
+# Build the ReSukiSU AnyKernel3 zip on a version tag and attach it to the release.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # to create the GitHub Release + upload asset
+
+    steps:
+      - name: Checkout repo (with KernelSU submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive   # KernelSU submodule is hard-required by Kbuild
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 zlib1g-dev libxml2-dev
+
+      - name: Download llvm-arm-toolchain-10.0.9
+        run: |
+          mkdir -p toolchain
+          curl -L -o toolchain/llvm-arm-toolchain-ship-10.0.9.tar.gz \
+            https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/llvm-arm-toolchain-ship-10.0.9.tar.gz
+          tar -xzf toolchain/llvm-arm-toolchain-ship-10.0.9.tar.gz -C toolchain
+          # libtinfo.so.5 + libxml2.so.2 are required by the clang-10/ld.lld tools;
+          # the build script symlinks them, so ensure the host libs exist.
+          ls -la toolchain/llvm-arm-toolchain-ship/10.0.9/bin/clang
+
+      - name: Build kernel + package AnyKernel3 zip
+        run: ./build-anykernel.sh "$PWD/toolchain"
+
+      - name: Upload zip to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: positron_susfs-veux-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
