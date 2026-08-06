@@ -1,7 +1,11 @@
 name: build-release
 
-# Build the ReSukiSU AnyKernel3 zip on a version tag and attach it to the release.
+# Build the ReSukiSU AnyKernel3 zip.
+# Triggers:
+#   - manually: Actions tab -> "Run workflow" button (workflow_dispatch)
+#   - on a v* tag push (creates/attaches a GitHub Release)
 on:
+  workflow_dispatch:
   push:
     tags: ['v*']
 
@@ -35,7 +39,15 @@ jobs:
       - name: Build kernel + package AnyKernel3 zip
         run: ./build-anykernel.sh "$PWD/toolchain"
 
-      - name: Upload zip to GitHub Release
+      - name: Upload zip as workflow artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: positron_susfs-veux
+          path: positron_susfs-veux-*.zip
+          if-no-files-found: error
+
+      - name: Upload zip to GitHub Release (only on tag push)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: positron_susfs-veux-*.zip

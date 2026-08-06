@@ -15,9 +15,17 @@ fi
 # 1. Build the kernel Image (identical to the verified HANDOVER commands)
 export PATH="$TC:$PATH" ARCH=arm64
 export LD_LIBRARY_PATH="$TC/../lib"
-# clang-10 needs libtinfo.so.5 and ld.lld needs libxml2.so.2; symlink if missing
-[ -e "$TC/../lib/libtinfo.so.5" ] || ln -sf /usr/lib64/libtinfo.so.6 "$TC/../lib/libtinfo.so.5"
-[ -e "$TC/../lib/libxml2.so.2" ] || ln -sf /usr/lib64/libxml2.so.16 "$TC/../lib/libxml2.so.2"
+# clang-10 needs libtinfo.so.5 and ld.lld needs libxml2.so.2; symlink the host
+# libs into the toolchain lib dir if missing (portable across distros).
+TLIB="$TC/../lib"
+[ -e "$TLIB/libtinfo.so.5" ] || {
+  HOST_TINFO=$(ldconfig -p 2>/dev/null | grep -oE '/[^ ]*libtinfo\.so\.[0-9]+' | head -1)
+  [ -n "$HOST_TINFO" ] && ln -sf "$HOST_TINFO" "$TLIB/libtinfo.so.5"
+}
+[ -e "$TLIB/libxml2.so.2" ] || {
+  HOST_XML2=$(ldconfig -p 2>/dev/null | grep -oE '/[^ ]*libxml2\.so\.[0-9]+' | head -1)
+  [ -n "$HOST_XML2" ] && ln -sf "$HOST_XML2" "$TLIB/libxml2.so.2"
+}
 make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
   OBJCOPY=llvm-objcopy NM=llvm-nm Image -j$(nproc)
 
