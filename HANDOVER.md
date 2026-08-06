@@ -15,12 +15,33 @@ Everything a maintainer needs to continue this kernel. Companion to `README.md` 
 
 | Ref | Content |
 |---|---|
-| `resukisu-susfs` (default) | ReSukiSU + SUSFS inline hook. `CONFIG_KSU_SUSFS=y`. Latest work. |
-| `master` | ReSukiSU Manual Hook only. `CONFIG_KSU_MANUAL_HOOK=y`. Stable baseline. |
-| `resukisu-susfs-v1` | Tag at SUSFS head (`1bcfbda9`). |
-| `resukisu-manualhook-v1` | Tag at manual archive head (`feb44115`). |
+| `master` **(default, working)** | ReSukiSU **Manual Hook** — **BUILDS to a bootable `Image`** (verified with llvm-arm-toolchain-10.0.9). CONFIG_Hooks |
+| `resukisu-susfs` | **WIP / blocked** — ReSukiSU + SUSFS attempt. See SUSFS status below. |
+
+Tags:
+- `resukisu-manualhook-v1` — manual hook archive head (`feb441159`)
 
 The two root methods are a Kconfig `choice` — mutually exclusive. If you flip mode, edit `veux_defconfig` and re-run `make veux_defconfig`.
+
+## ✅ Verified working — Manual Hook kernel
+
+Built with **llvm-arm-toolchain-ship-10.0.9** (clang) + `aarch64-linux-android-4.9`:
+- `ReSukiSU: using Manual Hook`, all 7 hooks verified
+- `symbol_export: write_op + sel_handle_status_ops found`
+- Full `vmlinux` linked → `OBJCOPY arch/arm64/boot/Image` (26.9 MB) produced, **0 errors**
+
+Build command (see `.config` = `CONFIG_KSU=y`, `CONFIG_KSU_MANUAL_HOOK=y`):
+```bash
+export PATH=<llvm-10.0.9>/bin:$PATH
+export ARCH=arm64 LD_LIBRARY_PATH=<llvm-10.0.9>/lib
+make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
+  OBJCOPY=llvm-objcopy NM=llvm-nm Image -j$(nproc)
+```
+Note: needs `libtinfo.so.5` + `libxml2.so.2` symlinks in the toolchain lib dir (gnome toolchain).
+
+## SUSFS — NOT working (blocked)
+
+ReSukiSU's **SUSFS inline** mode calls 12 kernel-side `susfs_*` functions (`susfs_is_current_proc_umounted`, `susfs_set_hide_sus_mnts_for_non_su_procs`, `susfs_start_sdcard_monitor_fn`, `susfs_set_avc_log_spoofing`, `susfs_extra_works`, etc.) that **no published susfs release provides** — verified: simonpunk susfs4ksu (kernel-.4, master), RKSU, MKSU, backslashxx, SukiSU-Ultra. These match a **newer risuFS-style susfs** not settled for ReSukiSU v4.1.0. **Do not use `CONFIG_KSU_SUSFS=y`** — it will not link. Use Manual Hook.
 
 ## What's done vs NOT done (honest)
 
@@ -36,25 +57,30 @@ The two root methods are a Kconfig `choice` — mutually exclusive. If you flip 
 - ❌ **SUSFS userspace not built.** Root-hiding needs `ksu_susfs` tool + simonpunk's `susfs4ksu` module (userspace half). Kernel half only is in-tree.
 - ReSukiSU **manager app** not bundled (kernel-side only).
 
-## Build (requires OEM toolchain)
+## Build (VERIFIED with llvm-arm-toolchain-10.0.9)
 
 ```bash
-export ARCH=arm64 CROSS_COMPILE=<oem-toolchain>/aarch64-linux-gnu-
-make veux_defconfig      # resukisu-susfs: KSU_SUSFS=y
-make Image -j$(nproc)
-# then your vendor's boot.img repack
+TC=<path>/llvm-arm-toolchain-ship/10.0.9/bin
+export PATH=$TC:$PATH ARCH=arm64 LD_LIBRARY_PATH=$TC/../lib
+# ensure libtinfo.so.5 + libxml2.so.2 exist in $TC/../lib
+make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
+  OBJCOPY=llvm-objcopy NM=llvm-nm Image -j$(nproc)
+# produces arch/arm64/boot/Image; repack via your vendor flow
 ```
+
+Master default = Manual Hook (`CONFIG_KSU_MANUAL_HOOK=y`). Do NOT enable `CONFIG_KSU_SUSFS=y` (does not link — see SUSFS status).
 
 ## Gotchas
 
 1. **Submodule**: `git clone --recurse-submodules` or `git submodule update --init`. ReSukiSU `Kbuild` fails without it.
-2. **`.gitignore`**: already covers `*.o`, `.ko`, `.config`, `/vmlinux`. Build output won't be committed. Re-audit if you add an `out/` dir convention.
-3. **Susfs `.rej`**: all 3 patch rejects (dcache/mount.h/sys.c) were hand-applied. If you re-run `50_add_susfs_in_kernel-5.4.patch`, expect those hunks to conflict — resolve manually, don't force.
-4. **`SUSFS_MAGIC`** is `0xFAFAFAFA` (C-valid); ReSukiSU userspace uses `0xFAFA_FAFA` — same value, different literal style. Keep them equal.
-5. **Manager/root**: kernel only. Install ReSukiSU manager; SUSFS features need the ksu_susfs tool.
+2. **Toolchain libs**: clang 10 needs `libtinfo.so.5` + `ld.lld` needs `libxml2.so.2` — symlink them into `<llvm>/10.0.9/lib`.
+3. **Clean config matters**: if `.config` was generated with a different hook mode (`KSU_SUSFS` vs `KSU_MANUAL_HOOK`), regenerate (`rm .config; make veux_defconfig`) before build, else ReSukiSU's verifier errors.
+4. **`-Werror` under clang-22**: vendor techpack needs `-Wno-error=format` in `techpack/Kbuild` (added) if built with system clang-22; clang-10 avoids most. The stub-header fixes (techpack, power, tcpc) are real, toolchain-independent fixes.
+5. **Manager/root**: kernel only. Install ReSukiSU manager app on device.
 
 ## Next steps (suggested)
 
-1. Build with OEM toolchain → confirm `boot.img` + device boots.
-2. Verify root via ReSukiSU manager, then susfs hiding via `ksu_susfs`.
-3. Optionally add GitHub Actions CI to build on push (needs a toolchain container).
+1. Repack `arch/arm64/boot/Image` into `boot.img` (AnyKernel3 / mkbootimg) and flash → verify boot + root.
+2. Verify root via ReSukiSU manager, `su`, device boots without issues.
+3. If SUSFS is desired, find the matching risuFS-style `fs/susfs.c` for ReSukiSU v4.1.0 (see SUSFS status above) — not yet available.
+4. Optionally add GitHub Actions CI (container with clang-10).

@@ -8,19 +8,22 @@ Built with [**ReSukiSU**](https://github.com/ReSukiSU/ReSukiSU) root (a KernelSU
 
 ## Branches
 
-| Branch | Root method | Purpose |
+| Branch | Root method | Status |
 |---|---|---|
-| **`resukisu-susfs`** (default) | ReSukiSU + SUSFS (inline hook) | Full feature: Root + susfs root-hiding (kernel half). |
-| `master` | ReSukiSU Manual Hook | Simpler baseline: Root + su, no root-hiding. |
+| **`master`** (default) | ReSukiSU **Manual Hook** | ✅ **BUILDS to a bootable `Image`** (verified with llvm-arm-toolchain-10.0.9). Recommended. |
+| `resukisu-susfs` | ReSukiSU + SUSFS | ⚠️ **WIP / blocked** — SUSFS kernel-side mismatch prevents linking. See below. |
 
-Tags: `resukisu-susfs-v1`, `resukisu-manualhook-v1` (v1 checkpoints of each).
+Both provide ReSukiSU **root + `su`**. `master` is the working, buildable kernel. SUSFS root-hiding is not yet functional.
 
-## What's integrated
+## What's integrated (`master`)
 
 - **ReSukiSU** as a git submodule at `KernelSU/`, wired via `drivers/kernelsu` symlink.
-- **Manual hook** mode (exec/open/stat/reboot hooks) — base layer on both branches.
-- **SUSFS** (kernel side, [simonpunk susfs4ksu](https://gitlab.com/simonpunk/susfs4ksu) `kernel-5.4`, **v1.5.5**) on `resukisu-susfs`: sus-path / sus-mount / sus-kstat / spoof-uname / cmdline-or-bootconfig spoof / open-redirect / sus-map.
-- `veux_defconfig` sets `CONFIG_KSU=y` plus either `CONFIG_KSU_SUSFS=y` (susfs branch) or `CONFIG_KSU_MANUAL_HOOK=y` (manual branch).
+- **Manual hook** mode (exec/open/stat/reboot hooks), verified by ReSukiSU's build-time checker.
+- `veux_defconfig`: `CONFIG_KSU=y` + `CONFIG_KSU_MANUAL_HOOK=y`.
+
+## SUSFS status (blocked)
+
+ReSukiSU's SUSFS-inline mode needs 12 kernel-side `susfs_*` functions that no published susfs release provides (checked simonpunk 5.4/master, RKSU, MKSU, backslashxx, SukiSU-Ultra). Enable `CONFIG_KSU_SUSFS` only if the matching risuFS-style `fs/susfs.c` is found. `master` avoids this — use it.
 
 ## Cloning
 
