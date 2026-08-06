@@ -117,9 +117,44 @@ fastboot flash boot new-boot.img    # unlocked bootloader
 4. **`-Werror` under clang-22**: vendor techpack needs `-Wno-error=format` in `techpack/Kbuild` (added) if built with system clang-22; clang-10 avoids most. The stub-header fixes (techpack, power, tcpc) are real, toolchain-independent fixes.
 5. **Manager/root**: kernel only. Install ReSukiSU manager app on device.
 
+## Release process (GitHub Actions)
+
+The repo ships a **CI auto-release workflow** (`.github/workflows/build-release.yml`) that builds the AnyKernel3 zip and publishes it. Two triggers:
+
+### Trigger A — tag push (creates a GitHub Release, zip attached flat) ✅ preferred
+```bash
+git tag v1.0              # or v1.1, v2.0, ...
+git push origin v1.0
+```
+On the `v*` tag push the workflow:
+1. checks out the repo **with the KernelSU submodule** (recursive — required by Kbuild)
+2. downloads `llvm-arm-toolchain-ship-10.0.9` (from `ravindu644/Android-Kernel-Tutorials` release)
+3. runs `./build-anykernel.sh "$PWD/toolchain"` → generates `.config` via `veux_defconfig`, builds `Image`, packages `positron_susfs-veux-<sha>.zip`
+4. uploads the zip **as a workflow artifact** (always)
+5. on tag events only, **attaches the zip to the GitHub Release** for that tag — flat download, no artifact-folder wrapping
+
+### Trigger B — manual "Run workflow" (no tag, artifact only)
+GitHub → Actions → **build-release** → **Run workflow**.
+Produces the zip as an **artifact** (download from the run summary). Does **not** create a Release (no tag context).
+
+### What the zip contains (flat, correct for PixelOS)
+```
+anykernel.sh        # veux config: BLOCK=boot, IS_SLOT_DEVICE=auto, device.name1=veux
+Image               # the built kernel (raw ARM64, ~27MB)
+tools/ak3-core.sh   # + magiskboot, busybox, etc. (from upstream osm0sis/AnyKernel3)
+META-INF/...        # recovery installer
+LICENSE, README.md
+```
+Install the zip in **recovery** (PixelOS/TWRP). It uses `split_boot`/`flash_boot` — replaces only the kernel in the existing `boot`, preserving the ROM's ramdisk + dtb.
+
+### Gotchas when releasing
+- **Fresh CI has no `.config`** — `build-anykernel.sh` runs `make veux_defconfig` first; don't remove that step.
+- **Do NOT set `withKernelSU`-style steps that `rm -rf drivers/kernelsu`** (the `Android-Kernel-Builder` fork does this and would replace ReSukiSU with upstream KernelSU — never use that builder for this repo).
+- The zip builds, but a **device flash test is the real verification** — the CI only proves it compiles/packages.
+
 ## Next steps (suggested)
 
-1. Repack `arch/arm64/boot/Image` into `boot.img` (AnyKernel3 / mkbootimg) and flash → verify boot + root.
-2. Verify root via ReSukiSU manager, `su`, device boots without issues.
+1. **Flash the Release zip** on the veux device (recovery) → verify boot + root via ReSukiSU manager. This is the one real-world test that remains.
+2. If it bootloops: `fastboot flash boot <pixelos-boot.img>` reverts instantly (data untouched).
 3. If SUSFS is desired, find the matching risuFS-style `fs/susfs.c` for ReSukiSU v4.1.0 (see SUSFS status above) — not yet available.
-4. Optionally add GitHub Actions CI (container with clang-10).
+4. CI auto-release is **done** (workflow + v1.0 Release). New releases = `git tag vX.Y && git push origin vX.Y`.
