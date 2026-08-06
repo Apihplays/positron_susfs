@@ -38,9 +38,17 @@ PATCH_VBMETA_FLAG=auto;
 . tools/ak3-core.sh;
 
 # boot install
-dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
+# split_boot skips ramdisk unpack/repack — kernel-only swap, keeps boot's existing
+# ramdisk + dtb (correct for PixelOS; the dtb stays matched to the ROM).
+split_boot;
 
-write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
+# optional: apply a cmdline override if a 'cmdline' file is bundled (see positron pattern)
+# if [ -f $AKHOME/cmdline ]; then
+#   sed -i '/^cmdline/d' $SPLITIMG/header;
+#   echo cmdline=$(tr '\n' ' ' < $AKHOME/cmdline) >> $SPLITIMG/header;
+# fi;
+
+flash_boot; # flash only the kernel into the boot partition
 ## end boot install
 
 
