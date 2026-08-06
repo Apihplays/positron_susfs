@@ -70,6 +70,45 @@ make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
 
 Master default = Manual Hook (`CONFIG_KSU_MANUAL_HOOK=y`). Do NOT enable `CONFIG_KSU_SUSFS=y` (does not link — see SUSFS status).
 
+## Repack `Image` → `boot.img` + flash (magiskboot)
+
+You **cannot** build `boot.img` from just `Image` — you need the **stock boot.img** from the device (it holds the ramdisk + dtb + boot header that magiskboot reuses). The APK's `magiskboot` is **statically linked and runs on your Linux PC** (`lib/x86_64/libmagiskboot.so`) — verified working. (The `arm64-v8a` variant runs on-device if you prefer.)
+
+**Get `magiskboot` (on PC):**
+```bash
+# Download Magisk-v30.7.apk (https://github.com/topjohnwu/Magisk/releases/tag/v30.7)
+unzip -j Magisk-v30.7.apk "lib/x86_64/libmagiskboot.so" -d magiskboot_tool
+chmod +x magiskboot_tool/libmagiskboot.so
+mv magiskboot_tool/libmagiskboot.so magiskboot_tool/magiskboot
+./magiskboot_tool/magiskboot   # should print usage (runs on x86_64 Linux)
+```
+
+**Repack (on PC):**
+```bash
+# 0. Get stock boot.img from device or firmware zip
+#    adb pull /dev/block/by-name/boot stock-boot.img   (rooted/adb) OR from the device's firmware
+# 1. Copy built Image next to stock
+cp arch/arm64/boot/Image ./Image
+# 2. Unpack stock boot (magiskboot must be in PATH)
+./magiskboot_tool/magiskboot unpack stock-boot.img
+#    → produces: kernel, ramdisk.cpio, dtb/kernel_dtb (per stock header)
+# 3. Replace kernel with ours
+cp Image kernel
+# 4. sm6375: our built Image is KERNEL-ONLY (no embedded dtb — verified: magiskboot split finds none).
+#    The DTB/ramdisk must come from your STOCK boot.img (unpacked above) — do NOT replace kernel_dtb.
+#    (If your device uses a separate dtb partition or images.dtb, keep whatever stock unpack produced.)
+# 5. Repack
+./magiskboot_tool/magiskboot repack stock-boot.img new-boot.img
+# 6. Verify
+./magiskboot_tool/magiskboot verify new-boot.img
+# 7. Flash
+fastboot flash boot new-boot.img    # unlocked bootloader
+```
+
+**Verify:** after flash, boot and check `su` via the ReSukiSU manager app.
+
+> **Important (vbmeta/AVB):** sm6375 uses AVB. If the device checks vbmeta, you may need to disable AVB verification (unlock + `fastboot --disable-verity --disable-verification flash vbmeta ...`) or sign with your own key. This is device-flashing knowledge beyond the kernel; proceed with a bootloader-unlocked device and at your own risk.
+
 ## Gotchas
 
 1. **Submodule**: `git clone --recurse-submodules` or `git submodule update --init`. ReSukiSU `Kbuild` fails without it.

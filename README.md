@@ -52,7 +52,9 @@ make Image -j$(nproc)
 
 ## Flash / root
 
-This repo is the *kernel*. Root on-device also needs the **ReSukiSU manager app**, and for SUSFS root-hiding the `ksu_susfs` userspace tool + simonpunk's `susfs4ksu` module (neither built here).
+Build produces `arch/arm64/boot/Image`. To flash you must **repack it into `boot.img`** using `magiskboot` (extract `lib/x86_64/libmagiskboot.so` from the Magisk APK — it runs on Linux PC), reusing your stock `boot.img` for ramdisk/dtb. Full steps: [`HANDOVER.md`](./HANDOVER.md#repack-image--bootimg--flash-magiskboot).
+
+This repo is the *kernel*. Root on-device also needs the **ReSukiSU manager app**.
 
 ## Credits / License
 
