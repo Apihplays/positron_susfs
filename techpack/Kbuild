@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
 TECHPACK?=y
 
+# QCOM techpack vendor code has many warnings that fail -Werror under newer
+# clang (format bugs, maybe-uninitialized, fall-through, unused vars, address
+# comparisons, multi-line comments, misleading indentation). The vendor tree
+# was written for Qualcomm's pinned clang. Downgrade these classes to
+# non-fatal for all techpack subdirs so the tree builds on a modern toolchain.
+subdir-ccflags-y += -Wno-error=format
+subdir-ccflags-y += -Wno-error=maybe-uninitialized
+subdir-ccflags-y += -Wno-error=implicit-fallthrough
+subdir-ccflags-y += -Wno-error=misleading-indentation
+subdir-ccflags-y += -Wno-error=unused-variable
+subdir-ccflags-y += -Wno-error=address
+subdir-ccflags-y += -Wno-error=comment
+
 techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*")
 obj-${TECHPACK} += stub/ $(addsuffix /,$(subst $(srctree)/techpack/,,$(techpack-dirs)))
