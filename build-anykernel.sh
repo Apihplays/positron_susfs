@@ -26,6 +26,10 @@ TLIB="$TC/../lib"
   HOST_XML2=$(ldconfig -p 2>/dev/null | grep -oE '/[^ ]*libxml2\.so\.[0-9]+' | head -1)
   [ -n "$HOST_XML2" ] && ln -sf "$HOST_XML2" "$TLIB/libxml2.so.2"
 }
+# .config is gitignored; generate it fresh (Manual Hook mode from veux_defconfig).
+if [ ! -f .config ]; then
+  make HOSTCC=gcc CC=clang ARCH=arm64 veux_defconfig
+fi
 make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
   OBJCOPY=llvm-objcopy NM=llvm-nm Image -j$(nproc)
 
