@@ -15,7 +15,8 @@ Everything a maintainer needs to continue this kernel. Companion to `README.md` 
 
 | Ref | Content |
 |---|---|
-| `master` **(default, working)** | ReSukiSU **Manual Hook** — **BUILDS to a bootable `Image`** (verified with llvm-arm-toolchain-10.0.9). CONFIG_Hooks |
+| `master` **(default, working)** | ReSukiSU **Manual Hook** — **BUILDS to a bootable `Image`** (verified with llvm-arm-toolchain-10.0.9). |
+| **`kernelsu-next`** | **KernelSU-Next** (legacy manual-hook) — **BUILDS to a bootable `Image`** (verified). Same deref base, KSU-Next instead of ReSukiSU. |
 | `resukisu-susfs` | **WIP / blocked** — ReSukiSU + SUSFS attempt. See SUSFS status below. |
 
 Tags:
@@ -23,7 +24,20 @@ Tags:
 
 The two root methods are a Kconfig `choice` — mutually exclusive. If you flip mode, edit `veux_defconfig` and re-run `make veux_defconfig`.
 
-## ✅ Verified working — Manual Hook kernel
+## ✅ Verified working — KernelSU-Next kernel (`kernelsu-next`)
+
+Built with `llvm-arm-toolchain-ship-10.0.9`:
+- `KernelSU-Next version: 33193`, `Hook mode: Manual` (legacy branch — the 5.4-compatible line; `stable`/`dev` are GKI-2.0/5.10+ tracepoint-only)
+- Full `vmlinux` → `OBJCOPY arch/arm64/boot/Image` (26.9 MB), **0 errors**
+- KSU-Next verified to use `KSU_MANUAL_HOOK` on 5.4 (per its Kconfig: `default y if !KPROBES`)
+
+**Integration notes (KSU-Next vs ReSukiSU on the same deref base):**
+- Most v1.2.1 hooks are compatible (KSU-Next legacy shares the sucompat/ksud code). Added: `ksu_handle_sys_reboot` (reboot.c), `ksu_handle_newfstat_ret` (stat.c).
+- **Removed** `ksu_handle_devpts` (KSU-Next does NOT define it — devpts is handled internally).
+- **`fs/namespace.c`** `can_umount` must be `static int` (NOT `static inline`) so KSU-Next's Kbuild append-regex doesn't re-add a duplicate at every build.
+- Same techpack toolchain fixes + AnyKernel3 + release pipeline reused.
+
+## ✅ Verified working — Manual Hook kernel (ReSukiSU)
 
 Built with **llvm-arm-toolchain-ship-10.0.9** (clang) + `aarch64-linux-android-4.9`:
 - `ReSukiSU: using Manual Hook`, all 7 hooks verified
