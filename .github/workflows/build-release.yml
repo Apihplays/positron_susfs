@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 zlib1g-dev libxml2-dev libtinfo5
+          sudo apt-get install -y python3 zlib1g-dev libxml2-dev
 
       - name: Download llvm-arm-toolchain-10.0.9
         run: |
