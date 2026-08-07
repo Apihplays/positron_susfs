@@ -20,7 +20,14 @@ export LD_LIBRARY_PATH="$TC/../lib"
 TLIB="$TC/../lib"
 [ -e "$TLIB/libtinfo.so.5" ] || {
   HOST_TINFO=$(ldconfig -p 2>/dev/null | grep -oE '/[^ ]*libtinfo\.so\.[0-9]+' | head -1)
-  [ -n "$HOST_TINFO" ] && ln -sf "$HOST_TINFO" "$TLIB/libtinfo.so.5"
+  [ -n "$HOST_TINFO" ] && ln -sf "$HOST_TINFO" "$TLIB/libtinfo.so.5" || true
+  # Fallback: search common locations if ldconfig missed it
+  if [ ! -e "$TLIB/libtinfo.so.5" ]; then
+    for cand in /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib64/libtinfo.so.6 \
+                /usr/lib/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.6; do
+      if [ -e "$cand" ]; then ln -sf "$cand" "$TLIB/libtinfo.so.5"; break; fi
+    done
+  fi
 }
 [ -e "$TLIB/libxml2.so.2" ] || {
   HOST_XML2=$(ldconfig -p 2>/dev/null | grep -oE '/[^ ]*libxml2\.so\.[0-9]+' | head -1)
