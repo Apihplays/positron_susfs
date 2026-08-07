@@ -1692,7 +1692,7 @@ static inline bool may_mandlock(void)
 #endif
 
 #ifdef CONFIG_KSU
-static inline int can_umount(const struct path *path, int flags)
+static int can_umount(const struct path *path, int flags)
 {
 	struct mount *mnt = real_mount(path->mnt);
 
