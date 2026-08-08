@@ -1327,7 +1327,11 @@ struct task_struct {
 
 	ANDROID_VENDOR_DATA_ARRAY(1, 3);
 
+	#ifdef CONFIG_KSU_SUSFS
+	ANDROID_KABI_USE(1, unsigned long susfs_task_state);
+#else
 	ANDROID_KABI_RESERVE(1);
+#endif
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
