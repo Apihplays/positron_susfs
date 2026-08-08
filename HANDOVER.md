@@ -16,8 +16,9 @@ Everything a maintainer needs to continue this kernel. Companion to `README.md` 
 | Ref | Content |
 |---|---|
 | `master` **(default, working)** | ReSukiSU **Manual Hook** — **BUILDS to a bootable `Image`** (verified with llvm-arm-toolchain-10.0.9). |
+| **`resukisu-susfs-v2`** | **ReSukiSU + SUSFS** (inline mode) — **BUILDS to a bootable `Image` + flashable AnyKernel3 zip** (verified). Root + root-hiding. **Recommended for susfs.** |
 | **`kernelsu-next`** | **KernelSU-Next** (legacy manual-hook) — **BUILDS to a bootable `Image`** (verified). Same deref base, KSU-Next instead of ReSukiSU. |
-| `resukisu-susfs` | **WIP / blocked** — ReSukiSU + SUSFS attempt. See SUSFS status below. |
+| `resukisu-susfs` | **old / superseded** — earlier SUSFS attempt (replaced by `resukisu-susfs-v2`). |
 
 Tags:
 - `resukisu-manualhook-v1` — manual hook archive head (`feb441159`)
@@ -53,9 +54,16 @@ make HOSTCC=gcc CC=clang LD=ld.lld AR=llvm-ar STRIP=llvm-strip \
 ```
 Note: needs `libtinfo.so.5` + `libxml2.so.2` symlinks in the toolchain lib dir (gnome toolchain).
 
-## SUSFS — NOT working (blocked)
+## ✅ Verified working — SUSFS kernel (`resukisu-susfs-v2`)
 
-ReSukiSU's **SUSFS inline** mode calls 12 kernel-side `susfs_*` functions (`susfs_is_current_proc_umounted`, `susfs_set_hide_sus_mnts_for_non_su_procs`, `susfs_start_sdcard_monitor_fn`, `susfs_set_avc_log_spoofing`, `susfs_extra_works`, etc.) that **no published susfs release provides** — verified: simonpunk susfs4ksu (kernel-.4, master), RKSU, MKSU, backslashxx, SukiSU-Ultra. These match a **newer risuFS-style susfs** not settled for ReSukiSU v4.1.0. **Do not use `CONFIG_KSU_SUSFS=y`** — it will not link. Use Manual Hook.
+Built with `llvm-arm-toolchain-ship-10.0.9` (same as positron/cyberc3dr recipe):
+- ReSukiSU v4.1.0 + **SUSFS inline mode** (`CONFIG_KSU_SUSFS=y`)
+- Full `vmlinux` → `OBJCOPY arch/arm64/boot/Image` (26.9 MB), **0 errors**
+- AnyKernel3 zip packaged: `positron_susfs-veux-<sha>.zip` (flashable)
+- **Recipe:** cyberc3dr `nGKI_Kernel_Build` (veux + ReSukiSU + SUSFS, proven). Kernel-side = `susfs_patch_to_5.4.patch` + device fixes; consistent `susfs.c`/`susfs.h`/`susfs_def.h` triplet (new-style ABI: `susfs_is_current_proc_umounted`, `TIF_PROC_UMOUNTED`, `AS_FLAGS_*`); kernel hooks in exec/open/stat/fd/task_mmu/namespace/sys.
+- **Key gotchas solved:** `susfs_task_state` added to `task_struct` (kabi-reserve swap); fd.c ABI (old→new macro); `DEFAULT_SUS_MNT_ID` added to new `susfs_def.h`.
+
+> Earlier "SUSFS blocked" note is superseded — it failed only because simonpunk's 5.4 branch susfs was too old for the newer hooks. The cyberc3dr recipe (adapted patches) resolves it.
 
 ## What's done vs NOT done (honest)
 
