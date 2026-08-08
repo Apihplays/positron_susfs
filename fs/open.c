@@ -24,6 +24,9 @@
 #include <linux/fs.h>
 #include <linux/personality.h>
 #include <linux/pagemap.h>
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs_def.h>
+#endif
 #include <linux/syscalls.h>
 #include <linux/rcupdate.h>
 #include <linux/audit.h>
